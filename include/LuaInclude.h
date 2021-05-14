@@ -251,13 +251,9 @@ static inline void LUA_UNLOAD_LIB(lua_State* L, std::string libname) {
 
 static inline int wrapped_lua_pcall(lua_State* L, int nargs, int nresults, int errfunc)
 {
-	static unsigned int pcallLevel = 0;
-
 	streflop::streflop_init<StreflopDouble>();
-	pcallLevel++;
 	int stat = lua_pcall(L, nargs, nresults, errfunc);
-	pcallLevel--;
-	if (pcallLevel == 0) streflop::streflop_init<StreflopSimple>();
+	streflop::streflop_init<StreflopSimple>();
 
 	return stat;
 }
