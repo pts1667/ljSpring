@@ -66,9 +66,17 @@ int spring_lua_unsynced_rand(lua_State* L) {
 	return 1;
 }
 
+uint64_t spring_lua_unsynced_rand_raw() {
+	const uint32_t r = lguRNG.NextInt();
+	const uint32_t r_m = lguRNG.NextInt();
+	const uint64_t r_s = (uint64_t)r >> 32;
+	const uint64_t r_sm = r_s | r_m;
+	return r_sm;
+}
+
 int spring_lua_unsynced_srand(lua_State* L) {
 	if (L == nullptr) {
-		lguRNG.Seed(CGlobalUnsyncedRNG::rng_val_type(&L)); // startup
+		lguRNG.Seed(CGlobalUnsyncedRNG::rng_val_type(0)); // startup
 	} else {
 		lguRNG.Seed(luaL_checkint(L, 1));
 	}
@@ -76,7 +84,10 @@ int spring_lua_unsynced_srand(lua_State* L) {
 	return 0;
 }
 
-
+uint64_t spring_lua_unsynced_srand_raw() {
+	lguRNG.Seed(CGlobalUnsyncedRNG::rng_val_type(0));
+	return 0;
+}
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -310,7 +321,7 @@ void spring_lua_alloc_get_stats(SLuaAllocState* state)
 #endif
 }
 
-bool spring_lua_alloc_skip_gc(float gcLoadMult)
+int spring_lua_alloc_skip_gc(float gcLoadMult)
 {
 	// randomly skip a GC cycle with probability 1 - (weighted memory load ratio)
 	const float rawLoadRatio = float(gLuaAllocState.allocedBytes.load()) / float(MAX_ALLOC_BYTES[__archBits__ == 64]);
@@ -318,7 +329,7 @@ bool spring_lua_alloc_skip_gc(float gcLoadMult)
 	return (lguRNG.NextFloat() > modLoadRatio);
 }
 
-bool spring_lua_alloc_get_error(SLuaAllocError* error)
+int spring_lua_alloc_get_error(SLuaAllocError* error)
 {
 	if (gLuaAllocError.msgBuf[0] == 0)
 		return false;
@@ -569,7 +580,7 @@ void spring_lua_ftoa(float f, char* buf, int precision)
 void spring_lua_format(float f, const char* fmt, char* buf)
 {
 	if (fmt[0] == '\0')
-		return spring_lua_ftoa(f, buf);
+		return spring_lua_ftoa(f, buf, -1);
 
 	// handles `%(sign)(width)(.precision)f`, i.e. %+10.2f
 	char bufC[128];
